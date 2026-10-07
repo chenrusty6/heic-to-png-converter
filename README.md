@@ -52,7 +52,7 @@
 ## 📥 下載與使用
 
 ### 🟢 方式一：下載免安裝執行檔（推薦一般使用者）
-1. 至本專案的 [Releases 頁面](https://github.com/) 下載已編譯好的 `HEIC-to-PNG-Converter.exe`。
+1. 至本專案的 [Releases 頁面](https://github.com/chenrusty6/heic-to-png-converter/releases) 下載已編譯好的 `HEIC-to-PNG-Converter.exe`。
 2. 雙擊即可直接執行，**電腦無需安裝 Python 環境**！
 
 ### 🔵 方式二：使用源碼運行（開發者）
@@ -101,7 +101,7 @@
 ### 2. 安裝步驟
 ```bash
 # 複製專案
-git clone https://github.com/your-username/heic-to-png-converter.git
+git clone https://github.com/chenrusty6/heic-to-png-converter.git
 cd heic-to-png-converter
 
 # 建立虛擬環境
