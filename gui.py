@@ -1,6 +1,7 @@
 """
 HEIC to PNG Converter - Modern GUI Application
-Enhanced for Crisp High-DPI Display, Responsive Layout, and Clear Typography.
+Enhanced for Crisp High-DPI Display, Responsive Layout, Clear Typography,
+and Full Bilingual (Traditional Chinese & English) Internationalization.
 """
 
 import os
@@ -14,9 +15,7 @@ import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 from PIL import Image, ImageTk
 
-# ==============================================================================
 # Windows High-DPI Awareness (Per-Monitor V2 for ultra-crisp ClearType rendering)
-# ==============================================================================
 try:
     import ctypes
     # DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 (-4) is the sharpest mode on Win 10/11
@@ -39,6 +38,7 @@ except Exception:
     pass
 
 import converter
+import i18n
 
 
 def format_size(bytes_num: int) -> str:
@@ -52,7 +52,11 @@ def format_size(bytes_num: int) -> str:
 class HEICConverterApp:
     def __init__(self, root: tk.Tk):
         self.root = root
-        self.root.title("HEIC 轉 PNG 批次圖片轉換器")
+
+        # Language state (auto-detected system language: 'zh' or 'en')
+        self.lang = i18n.detect_system_language()
+
+        self.root.title(self.t("app_title"))
 
         # Determine base directory (support both PyInstaller bundle and script)
         if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
@@ -67,7 +71,7 @@ class HEICConverterApp:
         self.app_icon_photo = None
         if self.icon_72_path.exists():
             try:
-                # Composite onto exact background color (#F8FAFC) for flawless anti-aliased edges without any white border
+                # Composite onto exact background color (#F8FAFC) for flawless anti-aliased edges without white border
                 bg_rgb = (248, 250, 252)
                 icon_img = Image.open(str(self.icon_72_path)).convert("RGBA")
                 composited_header = Image.new("RGB", icon_img.size, bg_rgb)
@@ -98,7 +102,7 @@ class HEICConverterApp:
         pos_y = max(0, (sh - window_h) // 2)
         self.root.geometry(f"{window_w}x{window_h}+{pos_x}+{pos_y}")
 
-        # Font configuration - Prioritize Microsoft JhengHei UI for sharp, clear CJK rendering
+        # Font configuration - Prioritize Microsoft JhengHei UI for sharp, clear CJK & Latin rendering
         self.font_family = "Microsoft JhengHei UI"
         self.font_title = (self.font_family, 15, "bold")
         self.font_subtitle = (self.font_family, 9)
@@ -123,6 +127,10 @@ class HEICConverterApp:
 
         # Thread-safe UI update poller
         self.root.after(100, self.process_queue)
+
+    def t(self, key: str, **kwargs) -> str:
+        """Helper to get translated string for current language."""
+        return i18n.t(key, lang=self.lang, **kwargs)
 
     def setup_styles(self):
         style = ttk.Style()
@@ -186,7 +194,7 @@ class HEICConverterApp:
             "Treeview",
             background="#FFFFFF",
             foreground="#1E293B",
-            rowheight=30,  # Roomy row height for clear legibility
+            rowheight=30,
             fieldbackground="#FFFFFF",
             font=self.font_body,
             borderwidth=1,
@@ -216,14 +224,15 @@ class HEICConverterApp:
     def create_widgets(self):
         """
         Builds the entire UI with responsive docking:
-        1. Top: Header & Drop Zone (side=TOP)
-        2. Bottom: Action Buttons & Progress (side=BOTTOM) -> ALWAYS visible!
-        3. Bottom: Settings Card (side=BOTTOM) -> ALWAYS visible!
-        4. Center: File List Table (expand=True, fill=BOTH) -> dynamically scales!
+        1. Top: Header with Brand Icon & Language Switcher
+        2. Top: Drop Zone (side=TOP)
+        3. Bottom: Action Buttons & Progress (side=BOTTOM)
+        4. Bottom: Settings Card (side=BOTTOM)
+        5. Center: File List Table (expand=True, fill=BOTH)
         """
 
         # ----------------------------------------------------------------------
-        # 1. Top Section: Header with Brand Icon
+        # 1. Top Section: Header with Brand Icon & Language Selector
         # ----------------------------------------------------------------------
         header_frame = ttk.Frame(self.root, padding="18 14 18 8")
         header_frame.pack(side=tk.TOP, fill=tk.X)
@@ -235,15 +244,34 @@ class HEICConverterApp:
         title_box = ttk.Frame(header_frame)
         title_box.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
-        title_lbl = ttk.Label(title_box, text="HEIC 轉 PNG 批次圖片轉換器", style="Title.TLabel")
-        title_lbl.pack(anchor=tk.W)
+        self.title_lbl = ttk.Label(title_box, text=self.t("app_title"), style="Title.TLabel")
+        self.title_lbl.pack(anchor=tk.W)
 
-        sub_lbl = ttk.Label(
+        self.sub_lbl = ttk.Label(
             title_box,
-            text="支援 iPhone / iPad 拍攝之 HEIC、HEIF 格式，批次快速轉換為無損 PNG 或高品質 JPG / WebP",
+            text=self.t("app_subtitle"),
             style="Muted.TLabel"
         )
-        sub_lbl.pack(anchor=tk.W, pady=(2, 0))
+        self.sub_lbl.pack(anchor=tk.W, pady=(2, 0))
+
+        # Language Selector (Top Right)
+        lang_box = ttk.Frame(header_frame)
+        lang_box.pack(side=tk.RIGHT, anchor=tk.E, padx=(10, 0))
+
+        self.lang_box_lbl = ttk.Label(lang_box, text="🌐", font=(self.font_family, 11))
+        self.lang_box_lbl.pack(side=tk.LEFT, padx=(0, 4))
+
+        self.lang_var = tk.StringVar(value="繁體中文" if self.lang == "zh" else "English")
+        self.lang_combo = ttk.Combobox(
+            lang_box,
+            textvariable=self.lang_var,
+            values=["繁體中文", "English"],
+            state="readonly",
+            width=9,
+            font=self.font_small
+        )
+        self.lang_combo.pack(side=tk.LEFT)
+        self.lang_combo.bind("<<ComboboxSelected>>", self.on_lang_changed)
 
         # ----------------------------------------------------------------------
         # 2. Top Section: Drop Zone & Fast Action Buttons
@@ -261,7 +289,7 @@ class HEICConverterApp:
         )
         self.drop_frame.pack(fill=tk.X, ipady=8)
 
-        drop_hint = "📂 點擊選擇檔案，或直接將 HEIC / HEIF 檔案或整個資料夾拖曳至此處" if HAS_DND else "📂 點擊下方按鈕選擇 HEIC / HEIF 檔案或資料夾"
+        drop_hint = self.t("drop_hint_dnd" if HAS_DND else "drop_hint_nodnd")
         self.drop_lbl = tk.Label(
             self.drop_frame,
             text=drop_hint,
@@ -276,7 +304,7 @@ class HEICConverterApp:
 
         self.add_files_btn = ttk.Button(
             btn_box,
-            text="+ 選擇檔案...",
+            text=self.t("btn_add_files"),
             command=self.choose_files,
             style="Secondary.TButton"
         )
@@ -284,7 +312,7 @@ class HEICConverterApp:
 
         self.add_folder_btn = ttk.Button(
             btn_box,
-            text="+ 選擇整個資料夾...",
+            text=self.t("btn_add_folder"),
             command=self.choose_folder,
             style="Secondary.TButton"
         )
@@ -292,7 +320,7 @@ class HEICConverterApp:
 
         self.clear_btn = ttk.Button(
             btn_box,
-            text="🗑️ 清空清單",
+            text=self.t("btn_clear"),
             command=self.clear_list,
             style="Secondary.TButton"
         )
@@ -330,15 +358,17 @@ class HEICConverterApp:
 
         self.status_lbl = ttk.Label(
             bottom_row,
-            text="準備就緒，請拖放或加入 HEIC 檔案",
+            text=self.t("status_ready"),
             font=self.font_body
         )
         self.status_lbl.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 10))
 
         # Right-aligned buttons
+        self.format_var = tk.StringVar(value="PNG")
+
         self.start_btn = ttk.Button(
             bottom_row,
-            text="⚡ 開始轉換為 PNG",
+            text=self.t("btn_start", fmt=self.format_var.get()),
             command=self.start_conversion,
             style="Primary.TButton"
         )
@@ -346,7 +376,7 @@ class HEICConverterApp:
 
         self.cancel_btn = ttk.Button(
             bottom_row,
-            text="取消",
+            text=self.t("btn_cancel"),
             command=self.cancel_conversion,
             style="Secondary.TButton",
             state="disabled"
@@ -355,7 +385,7 @@ class HEICConverterApp:
 
         self.open_output_btn = ttk.Button(
             bottom_row,
-            text="📁 開啟輸出資料夾",
+            text=self.t("btn_open_output"),
             command=self.open_output_folder,
             style="Secondary.TButton",
             state="disabled"
@@ -368,9 +398,9 @@ class HEICConverterApp:
         settings_container = ttk.Frame(self.root, padding="18 0 18 6")
         settings_container.pack(side=tk.BOTTOM, fill=tk.X)
 
-        settings_box = tk.LabelFrame(
+        self.settings_box = tk.LabelFrame(
             settings_container,
-            text=" 輸出與轉換設定 ",
+            text=self.t("settings_title"),
             font=self.font_body_bold,
             bg=self.card_bg,
             fg="#1E293B",
@@ -379,26 +409,27 @@ class HEICConverterApp:
             padx=14,
             pady=10
         )
-        settings_box.pack(fill=tk.X)
+        self.settings_box.pack(fill=tk.X)
 
-        # Row 1: Output Directory configuration (Using Grid for auto-expanding input)
-        row1 = tk.Frame(settings_box, bg=self.card_bg)
+        # Row 1: Output Directory configuration
+        row1 = tk.Frame(self.settings_box, bg=self.card_bg)
         row1.pack(fill=tk.X, pady=(0, 6))
 
         self.dest_mode_var = tk.StringVar(value="same")
         self.custom_dir_var = tk.StringVar(value="")
 
-        tk.Label(
+        self.lbl_output_dir = tk.Label(
             row1,
-            text="輸出目錄：",
+            text=self.t("lbl_output_dir"),
             bg=self.card_bg,
             fg=self.text_color,
             font=self.font_body_bold
-        ).pack(side=tk.LEFT)
+        )
+        self.lbl_output_dir.pack(side=tk.LEFT)
 
-        rb_same = tk.Radiobutton(
+        self.rb_same = tk.Radiobutton(
             row1,
-            text="保存在原始照片相同資料夾 (推薦)",
+            text=self.t("rb_same_dir"),
             variable=self.dest_mode_var,
             value="same",
             bg=self.card_bg,
@@ -407,11 +438,11 @@ class HEICConverterApp:
             activebackground=self.card_bg,
             command=self.toggle_dest_mode
         )
-        rb_same.pack(side=tk.LEFT, padx=(4, 16))
+        self.rb_same.pack(side=tk.LEFT, padx=(4, 16))
 
-        rb_custom = tk.Radiobutton(
+        self.rb_custom = tk.Radiobutton(
             row1,
-            text="指定自訂目錄：",
+            text=self.t("rb_custom_dir"),
             variable=self.dest_mode_var,
             value="custom",
             bg=self.card_bg,
@@ -420,7 +451,7 @@ class HEICConverterApp:
             activebackground=self.card_bg,
             command=self.toggle_dest_mode
         )
-        rb_custom.pack(side=tk.LEFT, padx=(0, 4))
+        self.rb_custom.pack(side=tk.LEFT, padx=(0, 4))
 
         self.dest_entry = ttk.Entry(
             row1,
@@ -432,7 +463,7 @@ class HEICConverterApp:
 
         self.dest_browse_btn = ttk.Button(
             row1,
-            text="瀏覽...",
+            text=self.t("btn_browse"),
             command=self.browse_custom_dir,
             state="disabled",
             style="Secondary.TButton"
@@ -440,18 +471,18 @@ class HEICConverterApp:
         self.dest_browse_btn.pack(side=tk.LEFT, padx=(4, 0))
 
         # Row 2: Target format and options
-        row2 = tk.Frame(settings_box, bg=self.card_bg)
+        row2 = tk.Frame(self.settings_box, bg=self.card_bg)
         row2.pack(fill=tk.X, pady=(4, 0))
 
-        tk.Label(
+        self.lbl_target_format = tk.Label(
             row2,
-            text="目標格式：",
+            text=self.t("lbl_target_format"),
             bg=self.card_bg,
             fg=self.text_color,
             font=self.font_body_bold
-        ).pack(side=tk.LEFT)
+        )
+        self.lbl_target_format.pack(side=tk.LEFT)
 
-        self.format_var = tk.StringVar(value="PNG")
         for fmt in ["PNG", "JPG", "WEBP"]:
             rb = tk.Radiobutton(
                 row2,
@@ -467,32 +498,32 @@ class HEICConverterApp:
 
         # EXIF & Auto-rotate checkboxes
         self.exif_var = tk.BooleanVar(value=True)
-        cb_exif = tk.Checkbutton(
+        self.cb_exif = tk.Checkbutton(
             row2,
-            text="保留 EXIF 元資訊 (拍攝時間、地點、相機參數)",
+            text=self.t("cb_preserve_exif"),
             variable=self.exif_var,
             bg=self.card_bg,
             fg=self.text_color,
             font=self.font_body,
             activebackground=self.card_bg
         )
-        cb_exif.pack(side=tk.LEFT, padx=(24, 10))
+        self.cb_exif.pack(side=tk.LEFT, padx=(24, 10))
 
         self.rotate_var = tk.BooleanVar(value=True)
-        cb_rotate = tk.Checkbutton(
+        self.cb_rotate = tk.Checkbutton(
             row2,
-            text="自動校正照片方向 (避免旋轉)",
+            text=self.t("cb_auto_rotate"),
             variable=self.rotate_var,
             bg=self.card_bg,
             fg=self.text_color,
             font=self.font_body,
             activebackground=self.card_bg
         )
-        cb_rotate.pack(side=tk.LEFT, padx=10)
+        self.cb_rotate.pack(side=tk.LEFT, padx=10)
 
         # Update button text on format change
         self.format_var.trace_add("write", lambda *args: self.start_btn.configure(
-            text=f"⚡ 開始轉換為 {self.format_var.get()}"
+            text=self.t("btn_start", fmt=self.format_var.get())
         ))
 
         # ----------------------------------------------------------------------
@@ -508,10 +539,10 @@ class HEICConverterApp:
             show="headings",
             selectmode="extended"
         )
-        self.tree.heading("name", text="檔案名稱", anchor=tk.W)
-        self.tree.heading("size", text="原始大小", anchor=tk.E)
-        self.tree.heading("status", text="狀態", anchor=tk.CENTER)
-        self.tree.heading("output", text="輸出路徑", anchor=tk.W)
+        self.tree.heading("name", text=self.t("col_name"), anchor=tk.W)
+        self.tree.heading("size", text=self.t("col_size"), anchor=tk.E)
+        self.tree.heading("status", text=self.t("col_status"), anchor=tk.CENTER)
+        self.tree.heading("output", text=self.t("col_output"), anchor=tk.W)
 
         # Columns configured with stretch to adapt to window resizing
         self.tree.column("name", width=260, minwidth=180, stretch=True)
@@ -531,9 +562,54 @@ class HEICConverterApp:
 
         # Right click menu
         self.context_menu = tk.Menu(self.root, tearoff=0, font=self.font_body)
-        self.context_menu.add_command(label="移除選定項目", command=self.remove_selected)
-        self.context_menu.add_command(label="開啟原圖所在資料夾", command=self.open_selected_folder)
+        self.context_menu.add_command(label=self.t("menu_remove"), command=self.remove_selected)
+        self.context_menu.add_command(label=self.t("menu_open_folder"), command=self.open_selected_folder)
         self.tree.bind("<Button-3>", self.show_context_menu)
+
+    def on_lang_changed(self, event=None):
+        val = self.lang_var.get()
+        new_lang = "zh" if val == "繁體中文" else "en"
+        if new_lang != self.lang:
+            self.lang = new_lang
+            self.apply_language()
+
+    def apply_language(self):
+        """Refreshes all UI text dynamically according to the current language."""
+        self.root.title(self.t("app_title"))
+        self.title_lbl.configure(text=self.t("app_title"))
+        self.sub_lbl.configure(text=self.t("app_subtitle"))
+
+        self.drop_lbl.configure(text=self.t("drop_hint_dnd" if HAS_DND else "drop_hint_nodnd"))
+        self.add_files_btn.configure(text=self.t("btn_add_files"))
+        self.add_folder_btn.configure(text=self.t("btn_add_folder"))
+        self.clear_btn.configure(text=self.t("btn_clear"))
+
+        self.settings_box.configure(text=self.t("settings_title"))
+        self.lbl_output_dir.configure(text=self.t("lbl_output_dir"))
+        self.rb_same.configure(text=self.t("rb_same_dir"))
+        self.rb_custom.configure(text=self.t("rb_custom_dir"))
+        self.dest_browse_btn.configure(text=self.t("btn_browse"))
+        self.lbl_target_format.configure(text=self.t("lbl_target_format"))
+        self.cb_exif.configure(text=self.t("cb_preserve_exif"))
+        self.cb_rotate.configure(text=self.t("cb_auto_rotate"))
+
+        self.tree.heading("name", text=self.t("col_name"))
+        self.tree.heading("size", text=self.t("col_size"))
+        self.tree.heading("status", text=self.t("col_status"))
+        self.tree.heading("output", text=self.t("col_output"))
+
+        self.start_btn.configure(text=self.t("btn_start", fmt=self.format_var.get()))
+        self.cancel_btn.configure(text=self.t("btn_cancel"))
+        self.open_output_btn.configure(text=self.t("btn_open_output"))
+
+        self.context_menu.entryconfigure(0, label=self.t("menu_remove"))
+        self.context_menu.entryconfigure(1, label=self.t("menu_open_folder"))
+
+        if not self.is_converting:
+            if not self.file_list:
+                self.status_lbl.configure(text=self.t("status_ready"))
+            else:
+                self.status_lbl.configure(text=self.t("status_remaining", count=len(self.file_list)))
 
     def toggle_dest_mode(self):
         if self.dest_mode_var.get() == "custom":
@@ -546,23 +622,23 @@ class HEICConverterApp:
             self.dest_browse_btn.configure(state="disabled")
 
     def browse_custom_dir(self):
-        d = filedialog.askdirectory(title="選擇輸出目錄")
+        d = filedialog.askdirectory(title=self.t("dialog_choose_dest"))
         if d:
             self.custom_dir_var.set(os.path.normpath(d))
 
     def choose_files(self):
         files = filedialog.askopenfilenames(
-            title="選擇 HEIC / HEIF 檔案",
+            title=self.t("dialog_choose_files"),
             filetypes=[
-                ("HEIC / HEIF 圖片", "*.heic *.heif *.hif *.HEIC *.HEIF *.HIF"),
-                ("所有檔案", "*.*")
+                (self.t("filter_heic"), "*.heic *.heif *.hif *.HEIC *.HEIF *.HIF"),
+                (self.t("filter_all"), "*.*")
             ]
         )
         if files:
             self.add_paths(list(files))
 
     def choose_folder(self):
-        folder = filedialog.askdirectory(title="選擇包含 HEIC 檔案的資料夾")
+        folder = filedialog.askdirectory(title=self.t("dialog_choose_folder"))
         if folder:
             self.add_paths([folder])
 
@@ -588,19 +664,19 @@ class HEICConverterApp:
                 try:
                     size_str = format_size(os.path.getsize(p))
                 except Exception:
-                    size_str = "未知"
-                
+                    size_str = self.t("size_unknown")
+
                 tag = "even" if len(self.file_list) % 2 == 0 else "odd"
                 self.tree.insert(
                     "",
                     tk.END,
                     iid=p,
-                    values=(Path(p).name, size_str, "等待中", "-"),
+                    values=(Path(p).name, size_str, self.t("status_waiting"), "-"),
                     tags=(tag,)
                 )
 
         total = len(self.file_list)
-        self.status_lbl.configure(text=f"清單中共 {total} 個待轉換檔案（剛新增 {new_count} 個）")
+        self.status_lbl.configure(text=self.t("status_list_count", total=total, new_count=new_count))
 
     def clear_list(self):
         if self.is_converting:
@@ -609,7 +685,7 @@ class HEICConverterApp:
         self.file_list.clear()
         self.file_set.clear()
         self.progress_var.set(0)
-        self.status_lbl.configure(text="清單已清空")
+        self.status_lbl.configure(text=self.t("status_cleared"))
         self.open_output_btn.configure(state="disabled")
 
     def show_context_menu(self, event):
@@ -628,7 +704,7 @@ class HEICConverterApp:
                 self.file_set.remove(item)
                 self.file_list.remove(item)
             self.tree.delete(item)
-        self.status_lbl.configure(text=f"目前剩餘 {len(self.file_list)} 個檔案")
+        self.status_lbl.configure(text=self.t("status_remaining", count=len(self.file_list)))
 
     def open_selected_folder(self):
         selected = self.tree.selection()
@@ -648,7 +724,7 @@ class HEICConverterApp:
     def cancel_conversion(self):
         if self.is_converting:
             self.should_cancel = True
-            self.status_lbl.configure(text="正在取消中，請稍候...")
+            self.status_lbl.configure(text=self.t("status_cancelling"))
             self.cancel_btn.configure(state="disabled")
 
     def start_conversion(self):
@@ -656,19 +732,19 @@ class HEICConverterApp:
             return
 
         if not self.file_list:
-            messagebox.showwarning("提示", "請先加入至少一個 HEIC/HEIF 檔案！")
+            messagebox.showwarning(self.t("dialog_tip"), self.t("dialog_no_files"))
             return
 
         output_dir = None
         if self.dest_mode_var.get() == "custom":
             output_dir = self.custom_dir_var.get().strip()
             if not output_dir:
-                messagebox.showwarning("提示", "請指定有效的自訂輸出目錄！")
+                messagebox.showwarning(self.t("dialog_tip"), self.t("dialog_no_dest"))
                 return
             try:
                 os.makedirs(output_dir, exist_ok=True)
             except Exception as e:
-                messagebox.showerror("錯誤", f"無法建立目錄: {e}")
+                messagebox.showerror(self.t("dialog_error"), self.t("dialog_mkdir_fail", e=e))
                 return
 
         # Prepare UI
@@ -682,7 +758,7 @@ class HEICConverterApp:
         # Reset status
         for item in self.file_list:
             vals = list(self.tree.item(item, "values"))
-            vals[2] = "等待中"
+            vals[2] = self.t("status_waiting")
             self.tree.item(item, values=vals)
 
         # Start thread
@@ -700,10 +776,6 @@ class HEICConverterApp:
         t.start()
 
     def worker_thread(self, files, output_dir, fmt, rotate, exif):
-        total = len(files)
-        success_count = 0
-        failed_count = 0
-
         def on_complete(res, completed, total_count):
             self.msg_queue.put(("file_done", res, completed, total_count))
 
@@ -718,11 +790,8 @@ class HEICConverterApp:
             cancel_flag=lambda: self.should_cancel
         )
 
-        for r in results:
-            if r["success"]:
-                success_count += 1
-            else:
-                failed_count += 1
+        success_count = sum(1 for r in results if r["success"])
+        failed_count = len(results) - success_count
 
         self.msg_queue.put(("finished", success_count, failed_count, output_dir))
 
@@ -741,15 +810,15 @@ class HEICConverterApp:
                     if self.tree.exists(in_path):
                         vals = list(self.tree.item(in_path, "values"))
                         if res["success"]:
-                            vals[2] = "✅ 完成"
+                            vals[2] = self.t("status_success")
                             vals[3] = res["output_path"]
                             self.last_output_dir = os.path.dirname(res["output_path"])
                         else:
-                            vals[2] = "❌ 失敗"
-                            vals[3] = f"錯誤: {res['error']}"
+                            vals[2] = self.t("status_failed")
+                            vals[3] = f"Error: {res['error']}"
                         self.tree.item(in_path, values=vals)
 
-                    self.status_lbl.configure(text=f"轉換中... {current}/{total} ({pct:.0f}%) - {Path(in_path).name}")
+                    self.status_lbl.configure(text=self.t("status_converting", current=current, total=total, pct=pct, name=Path(in_path).name))
 
                 elif msg_type == "finished":
                     _, sc, fc, out_dir = msg
@@ -760,11 +829,11 @@ class HEICConverterApp:
                     self.progress_var.set(100)
 
                     if self.should_cancel:
-                        self.status_lbl.configure(text=f"已手動取消！已完成: {sc} 個，失敗: {fc} 個")
-                        messagebox.showinfo("已取消", f"轉換已中止。\n\n成功: {sc} 個\n失敗: {fc} 個")
+                        self.status_lbl.configure(text=self.t("status_cancelled", sc=sc, fc=fc))
+                        messagebox.showinfo(self.t("dialog_cancelled_title"), self.t("dialog_cancelled_body", sc=sc, fc=fc))
                     else:
-                        self.status_lbl.configure(text=f"🎉 轉換全部完成！成功: {sc} 個，失敗: {fc} 個")
-                        messagebox.showinfo("轉換完成", f"恭喜！所有檔案處理完畢！\n\n成功: {sc} 個\n失敗: {fc} 個")
+                        self.status_lbl.configure(text=self.t("status_all_done", sc=sc, fc=fc))
+                        messagebox.showinfo(self.t("dialog_done_title"), self.t("dialog_done_body", sc=sc, fc=fc))
 
         except queue.Empty:
             pass

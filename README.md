@@ -5,6 +5,10 @@
 # HEIC to PNG Converter
 ### 專為 Windows 打造的 HEIC / HEIF 高品質圖片批次轉換工具
 
+<p align="center">
+  <b><a href="README.md">繁體中文</a></b> • <b><a href="README.en.md">English</a></b>
+</p>
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Platform: Windows](https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011-blue.svg)](https://microsoft.com/windows)
 [![Python: 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
@@ -41,6 +45,7 @@
 | 特色 | 說明 |
 | :--- | :--- |
 | 🔒 **100% 本地隱私保障** | 完全在您的電腦本機離線處理，絕不連網，照片安全無虞。 |
+| 🌐 **中英雙語介面** | 內建繁體中文與英文雙語切換，可依系統語言自動偵測或隨時手動更換。 |
 | ⚡ **雙模式使用體驗** | 支援「視覺化視窗清單操作」與「桌面圖示拖放秒轉」兩種使用方式。 |
 | 🧭 **自動方向校正** | 自動辨識手機拍攝方向（Orientation），徹底解決照片橫躺與顛倒問題。 |
 | 📷 **完整保留 EXIF 資訊** | 保留原始拍攝日期、時間、相機參數與 GPS 地理資訊。 |
@@ -142,11 +147,14 @@ heic-to-png-converter/
 │   └── index.html           # 響應式產品展示首頁
 ├── converter.py             # 圖片轉換核心引擎 (Pillow + pillow-heif 多線程)
 ├── gui.py                   # 現代化桌面視窗主程式 (TkinterDnD + 高 DPI 優化)
+├── i18n.py                  # 中英雙語國際化語言模組
 ├── cli.py                   # 命令列模式轉換腳本
 ├── dragdrop_runner.py       # 獨立拖放執行檔入口
 ├── build_exe.py             # PyInstaller 一鍵打包腳本
 ├── create_shortcuts.ps1     # 建立桌面原生捷徑腳本
 ├── requirements.txt         # Python 依賴清單
+├── README.md                # 繁體中文說明文件
+├── README.en.md             # 英文說明文件 (English Docs)
 ├── .gitignore               # Git 忽略配置
 └── LICENSE                  # MIT 開源授權協議
 ```

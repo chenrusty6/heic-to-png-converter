@@ -33,4 +33,23 @@ if res1.returncode != 0:
     print("[!] GUI Compilation failed.")
     sys.exit(1)
 
-print("\nCompilation completed successfully!")
+# 2. Build Drag-Drop Runner Executable
+cmd_dd = [
+    str(pyinstaller_exe),
+    "--noconfirm",
+    "--onefile",
+    "--windowed",
+    "--name", "HEIC-Drag-Drop",
+    "--icon", str(base_dir / "assets" / "heic_dragdrop.ico"),
+    "--add-data", f"{base_dir / 'assets'};assets",
+    "--collect-all", "pillow_heif",
+    str(base_dir / "dragdrop_runner.py"),
+]
+
+print("\n[2/2] Compiling Drag-Drop Runner...")
+res2 = subprocess.run(cmd_dd, cwd=str(base_dir))
+if res2.returncode != 0:
+    print("[!] Drag-Drop Compilation failed.")
+    sys.exit(1)
+
+print("\nAll compilations completed successfully!")
